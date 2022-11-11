@@ -5,7 +5,6 @@ import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
-from gsheetsdb import connect
 
 SCOPE = "https://www.googleapis.com/auth/spreadsheets"
 SPREADSHEET_ID = "1pavpY5XOCZ59kIB3m-xU25Rge6pQXlX9h6gGP3Vg7w4"
