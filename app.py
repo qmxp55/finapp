@@ -5,6 +5,7 @@ import streamlit as st
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
+from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
 from dashboard import gastos_category, pago_pngi, deuda_mes
 
@@ -38,6 +39,8 @@ def connect_to_gsheet():
         "v4",
         requestBuilder=build_request,
         http=authorized_http,
+        credentials=None,
+        adc_cert_path=None,
     )
     gsheet_connector = service.spreadsheets()
     return gsheet_connector
@@ -135,7 +138,8 @@ with registros:
     # expander = st.expander("Ve todos los registros")
     # with expander:
     st.write(f"Open original [Google Sheet]({GSHEET_URL})")
-    st.dataframe(get_data(gsheet_connector))
+    # st.dataframe(get_data(gsheet_connector))
+    AgGrid(get_data(gsheet_connector))
 
 with dashboard:
     st.title("🐞 Dashboard")
