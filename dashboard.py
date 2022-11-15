@@ -57,11 +57,11 @@ def pago_pngi(df, cortes, month=None, year=None):
 
         keep = df["tipo de pago"] == tarjeta
         if tarjeta in ["E", "DL", "DO"]:
-            keep &= df["fecha"] >= corte_min
-            keep &= df["fecha"] < corte_max
+            keep &= df["fecha de operacion"] >= corte_min
+            keep &= df["fecha de operacion"] < corte_max
         else:
-            keep &= df["fecha"] > corte_min
-            keep &= df["fecha"] <= corte_max
+            keep &= df["fecha de operacion"] > corte_min
+            keep &= df["fecha de operacion"] <= corte_max
         #
         # print(tarjeta, round(df['Cargo'][keep].sum(), 2))
         res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
@@ -74,31 +74,31 @@ def pago_pngi(df, cortes, month=None, year=None):
 
         keep = (
             (df["tipo de pago"] == tarjeta)
-            & (df["fecha"] >= first_day_last_month)
-            & (df["fecha"] < first_day_current_month)
+            & (df["fecha de operacion"] >= first_day_last_month)
+            & (df["fecha de operacion"] < first_day_current_month)
         )
         res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
 
         keep = (
             (df["tipo de pago"] == tarjeta)
-            & (df["fecha"] >= first_day_last_month)
-            & (df["fecha"] < first_day_current_month)
+            & (df["fecha de operacion"] >= first_day_last_month)
+            & (df["fecha de operacion"] < first_day_current_month)
             & (df["etiqueta"] == "Gasto fijo")
         )
         res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
 
         keep = (
             (df["tipo de pago"] == tarjeta)
-            & (df["fecha"] >= first_day_last_month)
-            & (df["fecha"] < first_day_current_month)
+            & (df["fecha de operacion"] >= first_day_last_month)
+            & (df["fecha de operacion"] < first_day_current_month)
             & (df["etiqueta"] != "Gasto fijo")
         )
         res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
 
         keep_gnf_periodo = (
             (df["tipo de pago"] == tarjeta)
-            & (df["fecha"] > corte_max)
-            & (df["fecha"] < first_day_current_month)
+            & (df["fecha de operacion"] > corte_max)
+            & (df["fecha de operacion"] < first_day_current_month)
             & (df["etiqueta"] != "Gasto fijo")
         )
         res[tarjeta].append(round(df["Cargo"][keep_gnf_periodo].sum(), 2))
@@ -143,8 +143,8 @@ def gastos_category(df, cortes, month=None, year=None):
         for etiqueta in set(df["etiqueta"]):
             keep = (
                 (df["tipo de pago"] == tarjeta)
-                & (df["fecha"] >= first_day_last_month)
-                & (df["fecha"] < first_day_current_month)
+                & (df["fecha de operacion"] >= first_day_last_month)
+                & (df["fecha de operacion"] < first_day_current_month)
                 & (df["etiqueta"] == etiqueta)
             )
             res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
@@ -184,3 +184,8 @@ def deuda_mes(df, income=None):
     )
 
     return tab
+
+
+def ingresos():
+
+    return 117000
