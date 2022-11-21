@@ -2,19 +2,19 @@ import pandas as pd
 
 
 cortes = {
-    "B": 24,
-    "BO": 4,
-    "CB": 16,
-    "CI": 5,
-    "PL": 1,
-    "PO": 1,
-    "E": 1,
-    "DL": 1,
-    "DO": 1,
+    "B": '24',
+    "BO": '04',
+    "CB": '16',
+    "CI": '05',
+    "PL": '01',
+    "PO": '01',
+    "E": '01',
+    "DL": '01',
+    "DO": '01',
 }
 
 
-def pago_pngi(df, cortes, month=None, year=None):
+def pago_pngi(df, cortes=cortes, month=None, year=None):
 
     res = {i: [] for i in cortes.keys()}
 
@@ -24,35 +24,36 @@ def pago_pngi(df, cortes, month=None, year=None):
         current_month = month
 
     if year is None:
-        current_year = pd.to_datetime("today").strftime("%y")
+        current_year = pd.to_datetime("today").strftime("%Y")
     else:
         current_year = year
 
+
     first_day_current_month = pd.to_datetime(
-        f"{1}/{int(current_month)}/{current_year}", format="%d/%m/%y"
+        f"{1}/{current_month}/{current_year}", format="%d/%m/%Y"
     )
     first_day_last_month = pd.to_datetime(
-        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%y"
+        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%Y"
     )
 
     for tarjeta, corte in cortes.items():
         if tarjeta in ["B", "CB"]:
             corte_min = pd.to_datetime(
                 f"{corte}/{int(current_month) - 2}/{current_year}",
-                format="%d/%m/%y",
+                format="%d/%m/%Y",
             )
             corte_max = pd.to_datetime(
                 f"{corte}/{int(current_month) - 1}/{current_year}",
-                format="%d/%m/%y",
+                format="%d/%m/%Y",
             )
         else:
             corte_min = pd.to_datetime(
                 f"{corte}/{int(current_month) - 1}/{current_year}",
-                format="%d/%m/%y",
+                format="%d/%m/%Y",
             )
             corte_max = pd.to_datetime(
                 f"{corte}/{int(current_month)}/{current_year}",
-                format="%d/%m/%y",
+                format="%d/%m/%Y",
             )
 
         keep = df["tipo de pago"] == tarjeta
@@ -118,7 +119,7 @@ def pago_pngi(df, cortes, month=None, year=None):
     return tab
 
 
-def gastos_category(df, cortes, month=None, year=None):
+def gastos_category(df, cortes=cortes, month=None, year=None):
 
     res = {i: [] for i in cortes.keys()}
 
@@ -128,15 +129,15 @@ def gastos_category(df, cortes, month=None, year=None):
         current_month = month
 
     if year is None:
-        current_year = pd.to_datetime("today").strftime("%y")
+        current_year = pd.to_datetime("today").strftime("%Y")
     else:
         current_year = year
 
     first_day_current_month = pd.to_datetime(
-        f"{1}/{int(current_month)}/{current_year}", format="%d/%m/%y"
+        f"{1}/{int(current_month)}/{current_year}", format="%d/%m/%Y"
     )
     first_day_last_month = pd.to_datetime(
-        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%y"
+        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%Y"
     )
 
     for tarjeta in res.keys():
@@ -157,7 +158,7 @@ def gastos_category(df, cortes, month=None, year=None):
     return tab
 
 
-def deuda_mes(df, income=None):
+def deuda_mes(df, income=None, month=None, year=None):
 
     lo_que_se_debe_pagar_este_mes = {}
     tab = pago_pngi(df, cortes)
@@ -167,7 +168,7 @@ def deuda_mes(df, income=None):
     lo_que_se_debe_pagar_este_mes["Total GMA No Fijos del periodo"] = tab[
         "GMA No Fijos del periodo"
     ][["B", "BO", "CB", "CI", "PL", "PO"]].sum()
-    tab_p = pago_pngi(df, cortes, month="12", year="22")
+    tab_p = pago_pngi(df, cortes, month=month, year=year)
     lo_que_se_debe_pagar_este_mes[
         "Total GMA Fijos del periodo en Debito/efectivo"
     ] = tab_p["GMA Fijos"][["E", "DL", "DO"]].sum()

@@ -118,6 +118,11 @@ def tipo_de_pago_ed():
 
     return ["DL", "DO", "E"]
 
+def meses():
+    return {'Enero':'1', 'Febrero':'2', 'Marzo':'3', 'Abril':'4', 'Mayo':'5', 'Junio':'6', 'Julio':'7', 'Agosto':'8', 'Septiember':'9', 'Octubre':'10', 'Noviembre':'11', 'Diciembre':'12'}
+
+def years():
+    return ['2022', '2023', '2024']
 
 # -------------------------
 
@@ -214,20 +219,21 @@ with registros_ingresos_pagosTC:
     AgGrid(get_data(gsheet_connector, 'resumen_pagos_income'), fit_columns_on_grid_load=True)
 
 with dashboard:
+
+
     st.title("🐞 Dashboard")
     st.subheader('Resumen pagos a realizar este mes')
 
-    st.markdown('Muestra el total de deuda y el disponible despues de considerar los gastos por tarjeta de credito del periodo anterior y del mes anterior ademas de los gastos fijos en efectivo del mes actual. ')
-    st.markdown('**GPA/PPNGI**: Total de Gastos del Periodo Anterior que corresponde al Pago Para No Generar Intereses de todas las tarjetas de credito.')
-    st.markdown('**GMA No Fijos**: Total Gastos del Mes Anterior No Fijos. Corresponde a todos los gastos **No Fijos** fuera del GPA pero que se tienen que cubrir con el efectivo/debito disponible de este mes.')
-    st.markdown('**GMC Fijos D/E**: Total Gastos del Mes Corriente **Fijos** que se pagan en Efectivo Y Debito.')
-    st.markdown('**Total Deuda**: Total necesario para cubrir GPA/PPNGI + GMA No Fijos + GMC Fijos D/E.')
-    st.markdown('**Total E/D Ingresos**: Total Ingresos en Efectivo/Debito de este mes.')
-    st.markdown('**Total E/D disponible**: Total disponible en Efectivo/Debito de este mes despues de cubrir **Total Deuda**.')
+    cols = st.columns((1,1))
+    mes = cols[0].selectbox("Mes:", list(meses().keys()), index=10)
+    year = cols[1].selectbox("Mes:", years(), index=0)
 
-    tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos())
+
+    tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos(), month=meses()[mes], year=year)
     with st.container():
         gpa, gma_no_fijos, gmc_fijos = st.columns(3)
+        # gpa.markdown(f'**GPA/PPNGI**  {tab.loc["Total GPA", "Monto"]} MXN')
+        # gpa.markdown(f'#### {tab.loc["Total GPA", "Monto"]} MXN')
         gpa.metric(
             "GPA/PPNGI",
             f'{tab.loc["Total GPA", "Monto"]} MXN',
@@ -260,4 +266,37 @@ with dashboard:
 
     # expander = st.expander("Ve todos los registros")
     # with expander:
-    st.dataframe(deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos()))
+    # st.dataframe(deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos()))
+
+    st.subheader('Como vamos con los gastos de este mes?')
+    gastos_categoria_current = gastos_category(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 1), year=year)
+    tab_p = pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 1), year=year)
+    disp_mes = tab.loc['Disponible para este mes', 'Monto']
+    disponible_al_dia = disp_mes - tab_p.loc['Total', 'GMA No Fijos']
+    # print(f'Disponible al dia: {round(disponible_al_dia, 2)} --> {round(disponible_al_dia * 100 / disp_mes, 2)} %')
+    st.metric("Total disponible al dia", f'{round(disponible_al_dia, 2)} MXN',)
+
+    cols = st.columns([1,3])
+    cols[0].dataframe(tab_p[['GMA No Fijos']])
+    cols[1].bar_chart(tab_p[['GMA No Fijos']].drop("Total", axis=0))
+
+    cols = st.columns([1,3])
+    cols[0].dataframe(tab_p[['GPA Fijos']])
+    cols[1].bar_chart(tab_p[['GPA Fijos']].drop("Total", axis=0))
+
+    st.bar_chart(gastos_categoria_current['Total'].drop("Total", axis=0))
+    st.dataframe(gastos_categoria_current)
+
+    st.subheader('Resumen gastos mes anterior')
+    st.dataframe(pago_pngi(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
+    st.subheader('Resumen gastos por cateogria mes anterior')
+    st.dataframe(gastos_category(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
+
+    st.subheader('NOTAS')
+    st.markdown('Muestra el total de deuda y el disponible despues de considerar los gastos por tarjeta de credito del periodo anterior y del mes anterior ademas de los gastos fijos en efectivo del mes actual. ')
+    st.markdown('**GPA/PPNGI**: Total de Gastos del Periodo Anterior que corresponde al Pago Para No Generar Intereses de todas las tarjetas de credito.')
+    st.markdown('**GMA No Fijos**: Total Gastos del Mes Anterior No Fijos. Corresponde a todos los gastos **No Fijos** fuera del GPA pero que se tienen que cubrir con el efectivo/debito disponible de este mes.')
+    st.markdown('**GMC Fijos D/E**: Total Gastos del Mes Corriente **Fijos** que se pagan en Efectivo Y Debito.')
+    st.markdown('**Total Deuda**: Total necesario para cubrir GPA/PPNGI + GMA No Fijos + GMC Fijos D/E.')
+    st.markdown('**Total E/D Ingresos**: Total Ingresos en Efectivo/Debito de este mes.')
+    st.markdown('**Total E/D disponible**: Total disponible en Efectivo/Debito de este mes despues de cubrir **Total Deuda**.')
