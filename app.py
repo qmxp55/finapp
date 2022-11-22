@@ -220,14 +220,13 @@ with registros_ingresos_pagosTC:
 
 with dashboard:
 
-
     st.title("🐞 Dashboard")
-    st.subheader('Resumen pagos a realizar este mes')
 
     cols = st.columns((1,1))
     mes = cols[0].selectbox("Mes:", list(meses().keys()), index=10)
     year = cols[1].selectbox("Mes:", years(), index=0)
 
+    st.subheader(f'Resumen pagos a realizar en {mes}')
 
     tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos(), month=meses()[mes], year=year)
     with st.container():
@@ -246,6 +245,12 @@ with dashboard:
             "GMC Fijos D/E",
             f'{tab.loc["Total GMA Fijos del periodo en Debito/efectivo", "Monto"]} MXN',
         )
+
+        tab_ppngi = pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 0), year=year)
+        # st.dataframe(tab_ppngi)
+        tab_ppngi = tab_ppngi.loc[:,'Gastos del periodo anterior (GPA)'].drop(tipo_de_pago_ed() + ['Total'])
+        tab_ppngi['Total'] = sum(tab_ppngi)
+        st.dataframe(tab_ppngi)
 
         td, ti, tdisp = st.columns(3)
         td.metric(
@@ -274,23 +279,46 @@ with dashboard:
     disp_mes = tab.loc['Disponible para este mes', 'Monto']
     disponible_al_dia = disp_mes - tab_p.loc['Total', 'GMA No Fijos']
     # print(f'Disponible al dia: {round(disponible_al_dia, 2)} --> {round(disponible_al_dia * 100 / disp_mes, 2)} %')
-    st.metric("Total disponible al dia", f'{round(disponible_al_dia, 2)} MXN',)
+    st.metric("Total disponible al dia para Gastos No Fijos", f'{round(disponible_al_dia, 2)} MXN',)
 
+    # gastos por categoria
+    st.markdown('#### Gastos No Fijos')
+    st.caption('Muestra los gastos no fijos que se deben cubrir este mes.')
     cols = st.columns([1,3])
-    cols[0].dataframe(tab_p[['GMA No Fijos']])
-    cols[1].bar_chart(tab_p[['GMA No Fijos']].drop("Total", axis=0))
+    gastos_category = gastos_categoria_current.loc['Total', :].drop(["Total", 'Gasto fijo'])
+    gastos_category['Total'] = gastos_category.sum()
+    gastos_category = gastos_category.round(2)
+    cols[0].dataframe(gastos_category)
+    cols[1].bar_chart(gastos_category.drop('Total'))
 
+    # gastos no fijos
+    # cols = st.columns([1,3])
+    # cols[0].dataframe(tab_p[['GMA No Fijos']])
+    # cols[1].bar_chart(tab_p[['GMA No Fijos']].drop("Total"))
+
+    st.markdown('#### Gastos Fijos D/E')
+    st.caption('Muestra los gastos fijos a pagar o que ya se pagaron este mes en efectivo y/o debito.')
     cols = st.columns([1,3])
-    cols[0].dataframe(tab_p[['GPA Fijos']])
-    cols[1].bar_chart(tab_p[['GPA Fijos']].drop("Total", axis=0))
+    gpa_fijo_ed = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_tc() + ['Total'])
+    # print(gpa_fijo_ed)
+    gpa_fijo_ed['Total'] = sum(gpa_fijo_ed)
+    cols[0].dataframe(gpa_fijo_ed)
+    cols[1].bar_chart(gpa_fijo_ed.drop("Total"))
 
-    st.bar_chart(gastos_categoria_current['Total'].drop("Total", axis=0))
-    st.dataframe(gastos_categoria_current)
+    st.markdown('#### Gastos Fijos Credito')
+    st.caption('Muestra los gastos fijos a pagar el siguiente mes/periodo.')
+    cols = st.columns([1,3])
+    gpa_fijo_tc = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_ed() + ['Total'])
+    gpa_fijo_tc['Total'] = sum(gpa_fijo_tc)
+    cols[0].dataframe(gpa_fijo_tc)
+    cols[1].bar_chart(gpa_fijo_tc.drop("Total"))
 
-    st.subheader('Resumen gastos mes anterior')
-    st.dataframe(pago_pngi(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
-    st.subheader('Resumen gastos por cateogria mes anterior')
-    st.dataframe(gastos_category(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
+    
+
+    # st.subheader('Resumen gastos mes anterior')
+    # st.dataframe(pago_pngi(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
+    # st.subheader('Resumen gastos por cateogria mes anterior')
+    # st.dataframe(gastos_category(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year))
 
     st.subheader('NOTAS')
     st.markdown('Muestra el total de deuda y el disponible despues de considerar los gastos por tarjeta de credito del periodo anterior y del mes anterior ademas de los gastos fijos en efectivo del mes actual. ')

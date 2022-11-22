@@ -3,14 +3,14 @@ import pandas as pd
 
 cortes = {
     "B": '24',
-    "BO": '04',
+    "BO": '4',
     "CB": '16',
-    "CI": '05',
-    "PL": '01',
-    "PO": '01',
-    "E": '01',
-    "DL": '01',
-    "DO": '01',
+    "CI": '5',
+    "PL": '1',
+    "PO": '1',
+    "E": '1',
+    "DL": '1',
+    "DO": '1',
 }
 
 
@@ -28,27 +28,53 @@ def pago_pngi(df, cortes=cortes, month=None, year=None):
     else:
         current_year = year
 
-
+    if month == '13':
+        current_month = 1
+        current_year = str(int(year) + 1)
+        past_month = 12
+        past_past_month = 11
+        year_of_past_month = int(current_year) - 1
+        year_of_past_past_month = int(current_year) - 1
+    elif month == '1':
+        current_month = 1
+        current_year = year
+        past_month = 12
+        past_past_month = 11
+        year_of_past_month = int(current_year) - 1
+        year_of_past_past_month = int(current_year) - 1
+    elif month == '2':
+        current_month = 2
+        current_year = year
+        past_month = 1
+        past_past_month = 12
+        year_of_past_month = int(current_year)
+        year_of_past_past_month = int(current_year) - 1
+    else:
+        past_month = int(current_month) - 1
+        past_past_month = int(current_month) - 2
+        year_of_past_month = current_year
+        year_of_past_past_month = current_year
+        
     first_day_current_month = pd.to_datetime(
         f"{1}/{current_month}/{current_year}", format="%d/%m/%Y"
     )
     first_day_last_month = pd.to_datetime(
-        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%Y"
+        f"{1}/{past_month}/{year_of_past_month}", format="%d/%m/%Y"
     )
 
     for tarjeta, corte in cortes.items():
         if tarjeta in ["B", "CB"]:
             corte_min = pd.to_datetime(
-                f"{corte}/{int(current_month) - 2}/{current_year}",
+                f"{corte}/{past_past_month}/{year_of_past_past_month}",
                 format="%d/%m/%Y",
             )
             corte_max = pd.to_datetime(
-                f"{corte}/{int(current_month) - 1}/{current_year}",
+                f"{corte}/{past_month}/{year_of_past_month}",
                 format="%d/%m/%Y",
             )
         else:
             corte_min = pd.to_datetime(
-                f"{corte}/{int(current_month) - 1}/{current_year}",
+                f"{corte}/{past_month}/{year_of_past_month}",
                 format="%d/%m/%Y",
             )
             corte_max = pd.to_datetime(
@@ -133,11 +159,38 @@ def gastos_category(df, cortes=cortes, month=None, year=None):
     else:
         current_year = year
 
+    if month == '13':
+        current_month = 1
+        current_year = str(int(year) + 1)
+        past_month = 12
+        past_past_month = 11
+        year_of_past_month = int(current_year) - 1
+        year_of_past_past_month = int(current_year) - 1
+    elif month == '1':
+        current_month = 1
+        current_year = year
+        past_month = 12
+        past_past_month = 11
+        year_of_past_month = int(current_year) - 1
+        year_of_past_past_month = int(current_year) - 1
+    elif month == '2':
+        current_month = 2
+        current_year = year
+        past_month = 1
+        past_past_month = 12
+        year_of_past_month = int(current_year)
+        year_of_past_past_month = int(current_year) - 1
+    else:
+        past_month = int(current_month) - 1
+        past_past_month = int(current_month) - 2
+        year_of_past_month = current_year
+        year_of_past_past_month = current_year
+        
     first_day_current_month = pd.to_datetime(
-        f"{1}/{int(current_month)}/{current_year}", format="%d/%m/%Y"
+        f"{1}/{current_month}/{current_year}", format="%d/%m/%Y"
     )
     first_day_last_month = pd.to_datetime(
-        f"{1}/{int(current_month) - 1}/{current_year}", format="%d/%m/%Y"
+        f"{1}/{past_month}/{year_of_past_month}", format="%d/%m/%Y"
     )
 
     for tarjeta in res.keys():
@@ -158,17 +211,18 @@ def gastos_category(df, cortes=cortes, month=None, year=None):
     return tab
 
 
-def deuda_mes(df, income=None, month=None, year=None):
+def deuda_mes(df, cortes=cortes, income=None, month=None, year=None):
 
     lo_que_se_debe_pagar_este_mes = {}
-    tab = pago_pngi(df, cortes)
+    tab = pago_pngi(df, cortes, month=month, year=year)
     lo_que_se_debe_pagar_este_mes["Total GPA"] = tab[
         "Gastos del periodo anterior (GPA)"
     ][["B", "BO", "CB", "CI", "PL", "PO"]].sum()
     lo_que_se_debe_pagar_este_mes["Total GMA No Fijos del periodo"] = tab[
         "GMA No Fijos del periodo"
     ][["B", "BO", "CB", "CI", "PL", "PO"]].sum()
-    tab_p = pago_pngi(df, cortes, month=month, year=year)
+    tab_p = pago_pngi(df, cortes, month=str(int(month) + 1), year=year)
+    # tab_p = tab
     lo_que_se_debe_pagar_este_mes[
         "Total GMA Fijos del periodo en Debito/efectivo"
     ] = tab_p["GMA Fijos"][["E", "DL", "DO"]].sum()
