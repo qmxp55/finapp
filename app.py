@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
-from dashboard import gastos_category, pago_pngi, deuda_mes, ingresos
+from dashboard import gastos_category, pago_pngi, deuda_mes, ingresos, expenses_summary
 
 
 SCOPE = "https://www.googleapis.com/auth/spreadsheets"
@@ -134,12 +134,12 @@ with registros_gastos:
     st.title("🐞 Registro de gastos")
     gsheet_connector = connect_to_gsheet()
 
-    st.sidebar.write(
-        f"This app shows how a Streamlit app can interact easily with a [Google Sheet]({GSHEET_URL}) to read or store data."
-    )
-    st.sidebar.write(
-        f"[Read more](https://docs.streamlit.io/knowledge-base/tutorials/databases/public-gsheet) about connecting your Streamlit app to Google Sheets."
-    )
+    # st.sidebar.write(
+    #     f"This app shows how a Streamlit app can interact easily with a [Google Sheet]({GSHEET_URL}) to read or store data."
+    # )
+    # st.sidebar.write(
+    #     f"[Read more](https://docs.streamlit.io/knowledge-base/tutorials/databases/public-gsheet) about connecting your Streamlit app to Google Sheets."
+    # )
 
     form = st.form(key="annotation")
 
@@ -174,12 +174,12 @@ with registros_ingresos_pagosTC:
     st.title("🐞 Registro de Ingresos y Pagos de TC")
     gsheet_connector = connect_to_gsheet()
 
-    st.sidebar.write(
-        f"This app shows how a Streamlit app can interact easily with a [Google Sheet]({GSHEET_URL}) to read or store data."
-    )
-    st.sidebar.write(
-        f"[Read more](https://docs.streamlit.io/knowledge-base/tutorials/databases/public-gsheet) about connecting your Streamlit app to Google Sheets."
-    )
+    # st.sidebar.write(
+    #     f"This app shows how a Streamlit app can interact easily with a [Google Sheet]({GSHEET_URL}) to read or store data."
+    # )
+    # st.sidebar.write(
+    #     f"[Read more](https://docs.streamlit.io/knowledge-base/tutorials/databases/public-gsheet) about connecting your Streamlit app to Google Sheets."
+    # )
 
     entry = st.radio(
         "Selecciona el tipo de registro 👉", ('Pago a TC', 'Ingreso E/D'),
@@ -222,13 +222,17 @@ with dashboard:
 
     st.title("🐞 Dashboard")
 
+    current_month = pd.to_datetime("today").strftime("%m")
+
     cols = st.columns((1,1))
-    mes = cols[0].selectbox("Mes:", list(meses().keys()), index=10)
+    # mes = cols[0].selectbox("Mes:", list(meses().keys()), index=10)
+    mes = cols[0].selectbox("Mes:", list(meses().keys()), index=int(current_month) - 1)
     year = cols[1].selectbox("Mes:", years(), index=0)
+    income = ingresos(df=get_data(gsheet_connector, 'resumen_pagos_income'), month=meses()[mes], year=year)
 
     st.subheader(f'Resumen pagos a realizar en {mes}')
 
-    tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos(), month=meses()[mes], year=year)
+    tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=income, month=meses()[mes], year=year)
     with st.container():
         gpa, gma_no_fijos, gmc_fijos = st.columns(3)
         # gpa.markdown(f'**GPA/PPNGI**  {tab.loc["Total GPA", "Monto"]} MXN')
@@ -259,7 +263,7 @@ with dashboard:
         )
         ti.metric(
             "Total E/D Ingresos",
-            f'{ingresos()} MXN',
+            f'{income} MXN',
         )
         tdisp.metric(
             "Total E/D disponible",
@@ -274,8 +278,15 @@ with dashboard:
     # st.dataframe(deuda_mes(df=get_data(gsheet_connector, 'records'), income=ingresos()))
 
     st.subheader('Como vamos con los gastos de este mes?')
+
+    df_sum, df_fijo, df_msi = expenses_summary(df=get_data(gsheet_connector, 'records'), month=meses()[mes], year=year)
+
     gastos_categoria_current = gastos_category(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 1), year=year)
     tab_p = pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 1), year=year)
+
+    # st.dataframe(pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 0), year=year))
+    st.dataframe(df_sum)
+
     disp_mes = tab.loc['Disponible para este mes', 'Monto']
     disponible_al_dia = disp_mes - tab_p.loc['Total', 'GMA No Fijos']
     # print(f'Disponible al dia: {round(disponible_al_dia, 2)} --> {round(disponible_al_dia * 100 / disp_mes, 2)} %')
@@ -296,22 +307,34 @@ with dashboard:
     # cols[0].dataframe(tab_p[['GMA No Fijos']])
     # cols[1].bar_chart(tab_p[['GMA No Fijos']].drop("Total"))
 
-    st.markdown('#### Gastos Fijos D/E')
-    st.caption('Muestra los gastos fijos a pagar o que ya se pagaron este mes en efectivo y/o debito.')
-    cols = st.columns([1,3])
-    gpa_fijo_ed = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_tc() + ['Total'])
-    # print(gpa_fijo_ed)
-    gpa_fijo_ed['Total'] = sum(gpa_fijo_ed)
-    cols[0].dataframe(gpa_fijo_ed)
-    cols[1].bar_chart(gpa_fijo_ed.drop("Total"))
+    st.markdown('#### Gastos Fijos')
+    st.caption('Muestra los gastos fijos a pagar o que ya se pagaron este mes.')
+    st.caption('Incluye gastos fijos del Periodo Anterior para pagos con tarjetas de Credito.')
+    st.caption('Y gastos fijos del mes actual para pagos en Efectivo y/o Debito.')
+    st.dataframe(df_fijo)
 
-    st.markdown('#### Gastos Fijos Credito')
-    st.caption('Muestra los gastos fijos a pagar el siguiente mes/periodo.')
-    cols = st.columns([1,3])
-    gpa_fijo_tc = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_ed() + ['Total'])
-    gpa_fijo_tc['Total'] = sum(gpa_fijo_tc)
-    cols[0].dataframe(gpa_fijo_tc)
-    cols[1].bar_chart(gpa_fijo_tc.drop("Total"))
+    st.markdown('#### Gastos a MSI')
+    st.caption('Muestra los gastos fijos que estan a Meses Sin Intereses a pagar o que ya se pagaron este mes.')
+    st.caption('Incluye gastos fijos del Periodo Anterior para pagos con tarjetas de Credito unicamente.')
+    st.dataframe(df_msi)
+
+
+    # st.markdown('#### Gastos Fijos D/E')
+    # st.caption('Muestra los gastos fijos a pagar o que ya se pagaron este mes en efectivo y/o debito.')
+    # cols = st.columns([1,3])
+    # gpa_fijo_ed = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_tc() + ['Total'])
+    # # print(gpa_fijo_ed)
+    # gpa_fijo_ed['Total'] = sum(gpa_fijo_ed)
+    # cols[0].dataframe(gpa_fijo_ed)
+    # cols[1].bar_chart(gpa_fijo_ed.drop("Total"))
+
+    # st.markdown('#### Gastos Fijos Credito')
+    # st.caption('Muestra los gastos fijos a pagar el siguiente mes/periodo.')
+    # cols = st.columns([1,3])
+    # gpa_fijo_tc = tab_p.loc[:,'GPA Fijos'].drop(tipo_de_pago_ed() + ['Total'])
+    # gpa_fijo_tc['Total'] = sum(gpa_fijo_tc)
+    # cols[0].dataframe(gpa_fijo_tc)
+    # cols[1].bar_chart(gpa_fijo_tc.drop("Total"))
 
     
 

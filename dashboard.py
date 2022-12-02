@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 cortes = {
@@ -14,9 +15,10 @@ cortes = {
 }
 
 
-def pago_pngi(df, cortes=cortes, month=None, year=None):
+def pago_pngi(df, cortes=cortes, month=None, year=None, get_cortes_masks=False):
 
     res = {i: [] for i in cortes.keys()}
+    res_cortes_masks = {}
 
     if month is None:
         current_month = pd.to_datetime("today").strftime("%m")
@@ -89,6 +91,8 @@ def pago_pngi(df, cortes=cortes, month=None, year=None):
         else:
             keep &= df["fecha de operacion"] > corte_min
             keep &= df["fecha de operacion"] <= corte_max
+
+        res_cortes_masks[tarjeta] = keep
         #
         # print(tarjeta, round(df['Cargo'][keep].sum(), 2))
         res[tarjeta].append(round(df["Cargo"][keep].sum(), 2))
@@ -142,7 +146,10 @@ def pago_pngi(df, cortes=cortes, month=None, year=None):
     tab = pd.DataFrame.from_dict(res, orient="index", columns=columns)
     tab.loc["Total"] = tab.sum()
 
-    return tab
+    if get_cortes_masks:
+        return res_cortes_masks
+    else:
+        return tab
 
 
 def gastos_category(df, cortes=cortes, month=None, year=None):
@@ -241,6 +248,76 @@ def deuda_mes(df, cortes=cortes, income=None, month=None, year=None):
     return tab
 
 
-def ingresos():
+def ingresos(df, month=None, year=None):
 
-    return 117000
+    first_day_current_month = pd.to_datetime(
+        f"{1}/{month}/{year}", format="%d/%m/%Y"
+    )
+
+    last_day_current_month = pd.to_datetime(
+        f"{30}/{month}/{year}", format="%d/%m/%Y"
+    )
+
+    total = 0
+    for tarjeta in ['DL', 'DO', 'E']:
+
+        keep = (df["fecha de operacion"] >= first_day_current_month) & (df["fecha de operacion"] <= last_day_current_month) & (df['Tarjeta'] == tarjeta)
+        # print(df['Income'][keep].sum())
+        total += df['Income'][keep].sum()
+
+    return total
+
+    # return 117000
+
+def expenses_summary(df, month=None, year=None):
+
+    # gasto_fijo = 0
+    # msi = 0
+    # gasto_no_fijo = 0
+
+    gasto_fijo_mask = np.zeros(len(df), dtype=bool)
+    msi_mask = np.zeros(len(df), dtype=bool)
+    # gasto_no_fijo_mask = np.zeros(len(df), dtype=bool)
+
+    ismsi = np.array([i == 'TRUE' for i in df['MSI']])
+    is_gasto_fijo = df["etiqueta"] == "Gasto fijo"
+
+    gastos_categoria_current = gastos_category(df=df, month=str(int(month) + 1), year=year)
+    gastos_category_total = gastos_categoria_current.loc['Total', :].drop(["Total", 'Gasto fijo']).sum()
+
+    res_cortes_masks = pago_pngi(df, cortes=cortes, month=month, year=year, get_cortes_masks=True)
+    # print(df['MSI'])
+    # print('is MSI?', ismsi)
+    # print(np.sum(ismsi), np.sum(~ismsi))
+    for tarjeta, mask in res_cortes_masks.items():
+        if tarjeta in ['DL', 'DO', 'E']: 
+            continue
+        # gasto_fijo += df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum()
+        # msi += df["Cargo"][mask & is_gasto_fijo & ismsi].sum()
+
+        gasto_fijo_mask |= (mask & is_gasto_fijo & ~ismsi)
+        msi_mask |= (mask & is_gasto_fijo & ismsi)
+        # print(tarjeta, '---->', round(df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum(), 2), round(df["Cargo"][mask & is_gasto_fijo & ismsi].sum(), 2), round(df["Cargo"][mask & is_gasto_fijo].sum(), 2))
+
+    res_cortes_masks = pago_pngi(df, cortes=cortes, month=str(int(month) + 1), year=year, get_cortes_masks=True)
+    for tarjeta, mask in res_cortes_masks.items():
+        if tarjeta not in ['DL', 'DO', 'E']: 
+            continue
+        # gasto_fijo += df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum()
+        # msi += df["Cargo"][mask & is_gasto_fijo & ismsi].sum()
+
+        gasto_fijo_mask |= (mask & is_gasto_fijo & ~ismsi)
+        msi_mask |= (mask & is_gasto_fijo & ismsi)
+
+    # print('gasto fijo', gasto_fijo)
+    # print('msi', msi)
+    # print('gasto no fijo', gasto_no_fijo)
+
+    # print('gasto fijo', df['Cargo'][gasto_fijo_mask].sum())
+    # print('msi', df['Cargo'][msi_mask].sum())
+    # print('gasto no fijo', gastos_category_total)
+
+    df_sum = pd.DataFrame.from_dict({'Gastos Fijos': df['Cargo'][gasto_fijo_mask].sum(), 'MSI':df['Cargo'][msi_mask].sum(), 'Gastos No Fijos':gastos_category_total}, orient="index")
+    # print(df_sum)
+
+    return df_sum, df[gasto_fijo_mask], df[msi_mask]
