@@ -254,9 +254,15 @@ def ingresos(df, month=None, year=None):
         f"{1}/{month}/{year}", format="%d/%m/%Y"
     )
 
-    last_day_current_month = pd.to_datetime(
+    if month == '2':
+        last_day_current_month = pd.to_datetime(
+        f"{28}/{month}/{year}", format="%d/%m/%Y"
+        )
+    else:
+        last_day_current_month = pd.to_datetime(
         f"{30}/{month}/{year}", format="%d/%m/%Y"
-    )
+        )
+
 
     total = 0
     for tarjeta in ['DL', 'DO', 'E']:
