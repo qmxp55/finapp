@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
 cortes = {
     "B": '24',
     "BO": '4',
@@ -273,7 +272,26 @@ def ingresos(df, month=None, year=None):
 
     return total
 
-    # return 117000
+def deuda_tc(df, month=None, year=None):
+
+    first_day_current_month = pd.to_datetime(
+        f"{1}/{month}/{year}", format="%d/%m/%Y"
+    )
+
+    if month == '2':
+        last_day_current_month = pd.to_datetime(
+        f"{28}/{month}/{year}", format="%d/%m/%Y"
+        )
+    else:
+        last_day_current_month = pd.to_datetime(
+        f"{30}/{month}/{year}", format="%d/%m/%Y"
+        )
+
+    keep = (df["fecha de operacion"] >= first_day_current_month) & (df["fecha de operacion"] <= last_day_current_month) 
+    for tarjeta in ['DL', 'DO', 'E']:
+        keep &= df['Tarjeta'] != tarjeta
+
+    return df[keep][['Tarjeta', 'PPNGI', 'Pago efectuado']]
 
 def expenses_summary(df, month=None, year=None):
 

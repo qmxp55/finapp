@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import HttpRequest
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
-from dashboard import gastos_category, pago_pngi, deuda_mes, ingresos, expenses_summary
+from dashboard import gastos_category, pago_pngi, deuda_mes, ingresos, expenses_summary, deuda_tc
 
 
 SCOPE = "https://www.googleapis.com/auth/spreadsheets"
@@ -124,6 +124,22 @@ def meses():
 def years():
     return ['2022', '2023', '2024']
 
+def resumen_deuda_tc(gsheet_connector, month=None, year=None):
+
+    tab_deuda_tc = deuda_tc(df=get_data(gsheet_connector, 'resumen_pagos_income'), month=month, year=year)
+    tab_ppngi = pago_pngi(df=get_data(gsheet_connector, 'records'), month=month, year=year)
+
+    tab_ppngi = tab_ppngi.loc[:,'Gastos del periodo anterior (GPA)'].drop(tipo_de_pago_ed() + ['Total'])
+    # tab_ppngi['Total'] = sum(tab_ppngi)
+    # st.dataframe(tab_ppngi)
+
+    tab_deuda_tc = tab_deuda_tc.set_index('Tarjeta')
+    tab_deuda_tc['Deuda mes siguiente'] = tab_deuda_tc['PPNGI'] - tab_deuda_tc['Pago efectuado']
+    tab_deuda_tc = tab_ppngi.to_frame().join(tab_deuda_tc)
+    tab_deuda_tc.loc['Total']= tab_deuda_tc.sum()
+
+    return tab_deuda_tc
+
 # -------------------------
 
 st.set_page_config(page_title="Finanzas", page_icon="🐞", layout="centered")
@@ -223,18 +239,21 @@ with dashboard:
     st.title("🐞 Dashboard")
 
     current_month = pd.to_datetime("today").strftime("%m")
-
     cols = st.columns((1,1))
     # mes = cols[0].selectbox("Mes:", list(meses().keys()), index=10)
     mes = cols[0].selectbox("Mes:", list(meses().keys()), index=int(current_month) - 1)
-    year = cols[1].selectbox("Mes:", years(), index=0)
+    mes_anterior = cols[0].selectbox("Mes anterior:", list(meses().keys()), index=int(current_month) - 2)
+    # print('============>', mes, mes_anterior)
+    year = cols[1].selectbox("Año:", years(), index=1)
     income = ingresos(df=get_data(gsheet_connector, 'resumen_pagos_income'), month=meses()[mes], year=year)
+    # tab_deuda_tc = deuda_tc(df=get_data(gsheet_connector, 'resumen_pagos_income'), month=meses()[mes], year=year)
+    tab_deuda_tc_mes_anterior = resumen_deuda_tc(gsheet_connector, month=meses()[mes_anterior], year=year).round(2)
 
     st.subheader(f'Resumen pagos a realizar en {mes}')
 
     tab = deuda_mes(df=get_data(gsheet_connector, 'records'), income=income, month=meses()[mes], year=year)
     with st.container():
-        gpa, gma_no_fijos, gmc_fijos = st.columns(3)
+        gpa, gma_no_fijos, gmc_fijos, deuda_tc_mes_anterior = st.columns(4)
         # gpa.markdown(f'**GPA/PPNGI**  {tab.loc["Total GPA", "Monto"]} MXN')
         # gpa.markdown(f'#### {tab.loc["Total GPA", "Monto"]} MXN')
         gpa.metric(
@@ -249,12 +268,13 @@ with dashboard:
             "GMC Fijos D/E",
             f'{tab.loc["Total GMA Fijos del periodo en Debito/efectivo", "Monto"]} MXN',
         )
+        deuda_tc_mes_anterior.metric(
+            "Deuda PPNGI mes anterior",
+            f'{tab_deuda_tc_mes_anterior.loc["Total", "Deuda mes siguiente"]} MXN',
+        )
 
-        tab_ppngi = pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 0), year=year)
-        # st.dataframe(tab_ppngi)
-        tab_ppngi = tab_ppngi.loc[:,'Gastos del periodo anterior (GPA)'].drop(tipo_de_pago_ed() + ['Total'])
-        tab_ppngi['Total'] = sum(tab_ppngi)
-        st.dataframe(tab_ppngi)
+        st.dataframe(resumen_deuda_tc(gsheet_connector, month=meses()[mes], year=year).style.format("{:.2f}"))
+        # st.dataframe()
 
         td, ti, tdisp = st.columns(3)
         td.metric(
@@ -285,8 +305,9 @@ with dashboard:
     tab_p = pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 1), year=year)
 
     # st.dataframe(pago_pngi(df=get_data(gsheet_connector, 'records'), month=str(int(meses()[mes]) + 0), year=year))
-    st.dataframe(df_sum)
-
+    df_sum.loc['Total'] = df_sum.sum()
+    st.dataframe(df_sum.style.format("{:.2f}"))
+    
     disp_mes = tab.loc['Disponible para este mes', 'Monto']
     disponible_al_dia = disp_mes - tab_p.loc['Total', 'GMA No Fijos']
     # print(f'Disponible al dia: {round(disponible_al_dia, 2)} --> {round(disponible_al_dia * 100 / disp_mes, 2)} %')
@@ -299,7 +320,7 @@ with dashboard:
     gastos_category = gastos_categoria_current.loc['Total', :].drop(["Total", 'Gasto fijo'])
     gastos_category['Total'] = gastos_category.sum()
     gastos_category = gastos_category.round(2)
-    cols[0].dataframe(gastos_category)
+    cols[0].dataframe(gastos_category.to_frame().style.format("{:.2f}"))
     cols[1].bar_chart(gastos_category.drop('Total'))
 
     # gastos no fijos
@@ -311,7 +332,7 @@ with dashboard:
     st.caption('Muestra los gastos fijos a pagar o que ya se pagaron este mes.')
     st.caption('Incluye gastos fijos del Periodo Anterior para pagos con tarjetas de Credito.')
     st.caption('Y gastos fijos del mes actual para pagos en Efectivo y/o Debito.')
-    st.dataframe(df_fijo)
+    st.dataframe(df_fijo[['establecimiento', 'Cargo', 'fecha de operacion', 'tipo de pago']])
 
     st.markdown('#### Gastos a MSI')
     st.caption('Muestra los gastos fijos que estan a Meses Sin Intereses a pagar o que ya se pagaron este mes.')
