@@ -2,15 +2,15 @@ import pandas as pd
 import numpy as np
 
 cortes = {
-    "B": '24',
-    "BO": '4',
-    "CB": '16',
-    "CI": '5',
-    "PL": '1',
-    "PO": '1',
-    "E": '1',
-    "DL": '1',
-    "DO": '1',
+    "B": "24",
+    "BO": "4",
+    "CB": "16",
+    "CI": "5",
+    "PL": "1",
+    "PO": "1",
+    "E": "1",
+    "DL": "1",
+    "DO": "1",
 }
 
 
@@ -29,21 +29,21 @@ def pago_pngi(df, cortes=cortes, month=None, year=None, get_cortes_masks=False):
     else:
         current_year = year
 
-    if month == '13':
+    if month == "13":
         current_month = 1
         current_year = str(int(year) + 1)
         past_month = 12
         past_past_month = 11
         year_of_past_month = int(current_year) - 1
         year_of_past_past_month = int(current_year) - 1
-    elif month == '1':
+    elif month == "1":
         current_month = 1
         current_year = year
         past_month = 12
         past_past_month = 11
         year_of_past_month = int(current_year) - 1
         year_of_past_past_month = int(current_year) - 1
-    elif month == '2':
+    elif month == "2":
         current_month = 2
         current_year = year
         past_month = 1
@@ -55,7 +55,7 @@ def pago_pngi(df, cortes=cortes, month=None, year=None, get_cortes_masks=False):
         past_past_month = int(current_month) - 2
         year_of_past_month = current_year
         year_of_past_past_month = current_year
-        
+
     first_day_current_month = pd.to_datetime(
         f"{1}/{current_month}/{current_year}", format="%d/%m/%Y"
     )
@@ -165,21 +165,21 @@ def gastos_category(df, cortes=cortes, month=None, year=None):
     else:
         current_year = year
 
-    if month == '13':
+    if month == "13":
         current_month = 1
         current_year = str(int(year) + 1)
         past_month = 12
         past_past_month = 11
         year_of_past_month = int(current_year) - 1
         year_of_past_past_month = int(current_year) - 1
-    elif month == '1':
+    elif month == "1":
         current_month = 1
         current_year = year
         past_month = 12
         past_past_month = 11
         year_of_past_month = int(current_year) - 1
         year_of_past_past_month = int(current_year) - 1
-    elif month == '2':
+    elif month == "2":
         current_month = 2
         current_year = year
         past_month = 1
@@ -191,7 +191,7 @@ def gastos_category(df, cortes=cortes, month=None, year=None):
         past_past_month = int(current_month) - 2
         year_of_past_month = current_year
         year_of_past_past_month = current_year
-        
+
     first_day_current_month = pd.to_datetime(
         f"{1}/{current_month}/{current_year}", format="%d/%m/%Y"
     )
@@ -253,24 +253,28 @@ def ingresos(df, month=None, year=None):
         f"{1}/{month}/{year}", format="%d/%m/%Y"
     )
 
-    if month == '2':
+    if month == "2":
         last_day_current_month = pd.to_datetime(
-        f"{28}/{month}/{year}", format="%d/%m/%Y"
+            f"{28}/{month}/{year}", format="%d/%m/%Y"
         )
     else:
         last_day_current_month = pd.to_datetime(
-        f"{30}/{month}/{year}", format="%d/%m/%Y"
+            f"{30}/{month}/{year}", format="%d/%m/%Y"
         )
 
-
     total = 0
-    for tarjeta in ['DL', 'DO', 'E']:
+    for tarjeta in ["DL", "DO", "E"]:
 
-        keep = (df["fecha de operacion"] >= first_day_current_month) & (df["fecha de operacion"] <= last_day_current_month) & (df['Tarjeta'] == tarjeta)
+        keep = (
+            (df["fecha de operacion"] >= first_day_current_month)
+            & (df["fecha de operacion"] <= last_day_current_month)
+            & (df["Tarjeta"] == tarjeta)
+        )
         # print(df['Income'][keep].sum())
-        total += df['Income'][keep].sum()
+        total += df["Income"][keep].sum()
 
     return total
+
 
 def deuda_tc(df, month=None, year=None):
 
@@ -278,20 +282,47 @@ def deuda_tc(df, month=None, year=None):
         f"{1}/{month}/{year}", format="%d/%m/%Y"
     )
 
-    if month == '2':
+    if month == "2":
         last_day_current_month = pd.to_datetime(
-        f"{28}/{month}/{year}", format="%d/%m/%Y"
+            f"{28}/{month}/{year}", format="%d/%m/%Y"
         )
     else:
         last_day_current_month = pd.to_datetime(
-        f"{30}/{month}/{year}", format="%d/%m/%Y"
+            f"{30}/{month}/{year}", format="%d/%m/%Y"
         )
 
-    keep = (df["fecha de operacion"] >= first_day_current_month) & (df["fecha de operacion"] <= last_day_current_month) 
-    for tarjeta in ['DL', 'DO', 'E']:
-        keep &= df['Tarjeta'] != tarjeta
+    keep = (df["fecha de operacion"] >= first_day_current_month) & (
+        df["fecha de operacion"] <= last_day_current_month
+    )
+    for tarjeta in ["DL", "DO", "E"]:
+        keep &= df["Tarjeta"] != tarjeta
 
-    return df[keep][['Tarjeta', 'PPNGI', 'Pago efectuado']]
+    return df[keep][["Tarjeta", "PPNGI", "Pago efectuado"]]
+
+
+def summary_gasto_no_fijo(df, month=None, year=None):
+
+    first_day_current_month = pd.to_datetime(
+        f"{1}/{month}/{year}", format="%d/%m/%Y"
+    )
+
+    if month == "2":
+        last_day_current_month = pd.to_datetime(
+            f"{28}/{month}/{year}", format="%d/%m/%Y"
+        )
+    else:
+        last_day_current_month = pd.to_datetime(
+            f"{30}/{month}/{year}", format="%d/%m/%Y"
+        )
+
+    gasto_no_fijo_mask = np.ones(len(df), dtype=bool)
+    gasto_no_fijo_mask &= df["etiqueta"] != "Gasto fijo"
+    gasto_no_fijo_mask &= (
+        df["fecha de operacion"] >= first_day_current_month
+    ) & (df["fecha de operacion"] <= last_day_current_month)
+
+    return df[gasto_no_fijo_mask]
+
 
 def expenses_summary(df, month=None, year=None):
 
@@ -303,35 +334,51 @@ def expenses_summary(df, month=None, year=None):
     msi_mask = np.zeros(len(df), dtype=bool)
     # gasto_no_fijo_mask = np.zeros(len(df), dtype=bool)
 
-    ismsi = np.array([i == 'TRUE' for i in df['MSI']])
+    ismsi = np.array([i == "TRUE" for i in df["MSI"]])
     is_gasto_fijo = df["etiqueta"] == "Gasto fijo"
 
-    gastos_categoria_current = gastos_category(df=df, month=str(int(month) + 1), year=year)
-    gastos_category_total = gastos_categoria_current.loc['Total', :].drop(["Total", 'Gasto fijo']).sum()
+    gastos_categoria_current = gastos_category(
+        df=df, month=str(int(month) + 1), year=year
+    )
+    gastos_category_total = (
+        gastos_categoria_current.loc["Total", :]
+        .drop(["Total", "Gasto fijo"])
+        .sum()
+    )
 
-    res_cortes_masks = pago_pngi(df, cortes=cortes, month=month, year=year, get_cortes_masks=True)
+    res_cortes_masks = pago_pngi(
+        df, cortes=cortes, month=month, year=year, get_cortes_masks=True
+    )
     # print(df['MSI'])
     # print('is MSI?', ismsi)
     # print(np.sum(ismsi), np.sum(~ismsi))
     for tarjeta, mask in res_cortes_masks.items():
-        if tarjeta in ['DL', 'DO', 'E']: 
+        if tarjeta in ["DL", "DO", "E"]:
             continue
         # gasto_fijo += df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum()
         # msi += df["Cargo"][mask & is_gasto_fijo & ismsi].sum()
 
-        gasto_fijo_mask |= (mask & is_gasto_fijo & ~ismsi)
-        msi_mask |= (mask & is_gasto_fijo & ismsi)
+        gasto_fijo_mask |= mask & is_gasto_fijo & ~ismsi
+        # gasto_no_fijo_mask |= mask & ~is_gasto_fijo & ~ismsi
+        msi_mask |= mask & is_gasto_fijo & ismsi
         # print(tarjeta, '---->', round(df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum(), 2), round(df["Cargo"][mask & is_gasto_fijo & ismsi].sum(), 2), round(df["Cargo"][mask & is_gasto_fijo].sum(), 2))
 
-    res_cortes_masks = pago_pngi(df, cortes=cortes, month=str(int(month) + 1), year=year, get_cortes_masks=True)
+    res_cortes_masks = pago_pngi(
+        df,
+        cortes=cortes,
+        month=str(int(month) + 1),
+        year=year,
+        get_cortes_masks=True,
+    )
     for tarjeta, mask in res_cortes_masks.items():
-        if tarjeta not in ['DL', 'DO', 'E']: 
+        if tarjeta not in ["DL", "DO", "E"]:
             continue
         # gasto_fijo += df["Cargo"][mask & is_gasto_fijo & ~ismsi].sum()
         # msi += df["Cargo"][mask & is_gasto_fijo & ismsi].sum()
 
-        gasto_fijo_mask |= (mask & is_gasto_fijo & ~ismsi)
-        msi_mask |= (mask & is_gasto_fijo & ismsi)
+        gasto_fijo_mask |= mask & is_gasto_fijo & ~ismsi
+        # gasto_no_fijo_mask |= mask & ~is_gasto_fijo & ~ismsi
+        msi_mask |= mask & is_gasto_fijo & ismsi
 
     # print('gasto fijo', gasto_fijo)
     # print('msi', msi)
@@ -341,7 +388,14 @@ def expenses_summary(df, month=None, year=None):
     # print('msi', df['Cargo'][msi_mask].sum())
     # print('gasto no fijo', gastos_category_total)
 
-    df_sum = pd.DataFrame.from_dict({'Gastos Fijos': df['Cargo'][gasto_fijo_mask].sum(), 'MSI':df['Cargo'][msi_mask].sum(), 'Gastos No Fijos':gastos_category_total}, orient="index")
+    df_sum = pd.DataFrame.from_dict(
+        {
+            "Gastos Fijos": df["Cargo"][gasto_fijo_mask].sum(),
+            "MSI": df["Cargo"][msi_mask].sum(),
+            "Gastos No Fijos": gastos_category_total,
+        },
+        orient="index",
+    )
     # print(df_sum)
 
     return df_sum, df[gasto_fijo_mask], df[msi_mask]
